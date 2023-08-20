@@ -1,6 +1,4 @@
-// go_mux.go
-
-package go_mux
+package muxify
 
 import "net/http"
 

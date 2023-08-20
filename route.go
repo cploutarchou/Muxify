@@ -1,4 +1,4 @@
-package go_mux
+package muxify
 
 func NewRouter() *Mux {
 	return NewMux()

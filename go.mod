@@ -1,3 +1,3 @@
-module github.com/cploutarchou/go-mux
+module github.com/cploutarchou/muxify
 
 go 1.20
