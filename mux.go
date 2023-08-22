@@ -17,6 +17,7 @@ type pathNode struct {
 	pathSegment string
 	children    []*pathNode
 	route       *RouteInfo
+	isWildcard  bool
 }
 
 type RouteInfo struct {
@@ -42,7 +43,15 @@ func (m *Mux) Handle(method, path string, handler http.Handler) {
 	currentNode := m.root
 	for _, segment := range segments {
 		if segment != "" {
-			currentNode = currentNode.addChild(segment)
+			if segment[0] == '*' {
+				// It's a wildcard route, so we don't look any further.
+				child := currentNode.addChild(segment)
+				child.isWildcard = true
+				currentNode = child
+				break
+			} else {
+				currentNode = currentNode.addChild(segment)
+			}
 		}
 	}
 	currentNode.route = &RouteInfo{
@@ -50,16 +59,14 @@ func (m *Mux) Handle(method, path string, handler http.Handler) {
 		Handler: handler,
 	}
 }
-
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 	currentNode := m.root
 	for _, segment := range segments {
 		if segment != "" {
 			currentNode = currentNode.findChild(segment)
-			if currentNode == nil {
-				m.notFoundHandler.ServeHTTP(w, r)
-				return
+			if currentNode == nil || currentNode.isWildcard {
+				break
 			}
 		}
 	}
