@@ -1,7 +1,6 @@
 package muxify
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -56,7 +55,6 @@ func (m *Mux) Handle(method, path string, handler http.Handler) {
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 	currentNode := m.root
-	fmt.Println("Segments:", segments)
 	for _, segment := range segments {
 		if segment != "" {
 			currentNode = currentNode.findChild(segment)
