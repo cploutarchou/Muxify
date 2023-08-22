@@ -64,10 +64,17 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	currentNode := m.root
 	for _, segment := range segments {
 		if segment != "" {
-			currentNode = currentNode.findChild(segment)
-			if currentNode == nil || currentNode.isWildcard {
-				break
+			nextNode := currentNode.findChild(segment)
+			if nextNode == nil {
+				if currentNode.isWildcard {
+					// We are at a wildcard, so we'll stop the traversal and handle it
+					break
+				}
+				// No matching child node, and we're not at a wildcard, so it's a not found
+				m.notFoundHandler.ServeHTTP(w, r)
+				return
 			}
+			currentNode = nextNode
 		}
 	}
 
