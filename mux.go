@@ -51,10 +51,6 @@ func (m *Mux) Handle(method, path string, handler http.Handler) {
 	}
 }
 
-func (m *Mux) Use(middleware func(http.Handler) http.Handler) {
-	m.middlewares = append(m.middlewares, middleware)
-}
-
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 	currentNode := m.root
