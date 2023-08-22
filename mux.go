@@ -1,6 +1,7 @@
 package muxify
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -43,15 +44,7 @@ func (m *Mux) Handle(method, path string, handler http.Handler) {
 	currentNode := m.root
 	for _, segment := range segments {
 		if segment != "" {
-			if segment[0] == '*' {
-				// It's a wildcard route, so we don't look any further.
-				child := currentNode.addChild(segment)
-				child.isWildcard = true
-				currentNode = child
-				break
-			} else {
-				currentNode = currentNode.addChild(segment)
-			}
+			currentNode = currentNode.addChild(segment)
 		}
 	}
 	currentNode.route = &RouteInfo{
@@ -59,31 +52,31 @@ func (m *Mux) Handle(method, path string, handler http.Handler) {
 		Handler: handler,
 	}
 }
+
 func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	segments := strings.Split(r.URL.Path, "/")
 	currentNode := m.root
+	fmt.Println("Segments:", segments)
 	for _, segment := range segments {
 		if segment != "" {
-			nextNode := currentNode.findChild(segment)
-			if nextNode == nil {
-				if currentNode.isWildcard {
-					// We are at a wildcard, so we'll stop the traversal and handle it
-					break
-				}
-				// No matching child node, and we're not at a wildcard, so it's a not found
+			currentNode = currentNode.findChild(segment)
+			if currentNode == nil {
 				m.notFoundHandler.ServeHTTP(w, r)
 				return
 			}
-			currentNode = nextNode
+			if currentNode.isWildcard {
+				break
+			}
 		}
 	}
 
-	if currentNode.route != nil && currentNode.route.Method == r.Method {
+	// Check if we are on a wildcard node, or if the route exists and method matches
+	if (currentNode.isWildcard && currentNode.route != nil) ||
+		(currentNode.route != nil && currentNode.route.Method == r.Method) {
 		finalHandler := currentNode.route.Handler
 		for _, middleware := range m.middlewares {
 			finalHandler = middleware(finalHandler)
 		}
-
 		ctx := m.pool.Get().(*Context)
 		ctx.Response = &w
 		ctx.Request = r
@@ -97,12 +90,15 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (n *pathNode) addChild(segment string) *pathNode {
 	for _, child := range n.children {
-		if child.pathSegment == segment {
+		if child.pathSegment == segment || child.isWildcard {
 			return child
 		}
 	}
 	newChild := &pathNode{
 		pathSegment: segment,
+	}
+	if segment == "*" {
+		newChild.isWildcard = true
 	}
 	n.children = append(n.children, newChild)
 	return newChild
@@ -111,6 +107,9 @@ func (n *pathNode) addChild(segment string) *pathNode {
 func (n *pathNode) findChild(segment string) *pathNode {
 	for _, child := range n.children {
 		if child.pathSegment == segment {
+			return child
+		}
+		if child.isWildcard {
 			return child
 		}
 	}
