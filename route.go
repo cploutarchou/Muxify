@@ -15,9 +15,9 @@ type Router interface {
 }
 
 type Context struct {
-	*http.Request
-	http.ResponseWriter
-	Params map[string]string
+	Response *http.ResponseWriter
+	Request  *http.Request
+	Params   map[string]string
 }
 
 type Routes interface {

@@ -69,6 +69,12 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		for _, middleware := range m.middlewares {
 			finalHandler = middleware(finalHandler)
 		}
+
+		ctx := m.pool.Get().(*Context)
+		ctx.Response = &w
+		ctx.Request = r
+		defer m.pool.Put(ctx)
+
 		finalHandler.ServeHTTP(w, r)
 	} else {
 		m.notFoundHandler.ServeHTTP(w, r)
